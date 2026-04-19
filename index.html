@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>交易仓位计算器</title>
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0a0f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="仓位计算">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
     <style>
         /* ===== CSS Variables - 深色主题 ===== */
         :root {
@@ -752,7 +760,7 @@
                     </div>
                 </div>
 
-                <button class="action-btn" id="recordBtn">记录当前计算 (Enter)</button>
+                <button class="action-btn" id="recordBtn">记录当前计算</button>
             </div>
         </div>
 
@@ -1368,6 +1376,15 @@
         };
 
         init();
+
+        // ===== PWA: 注册 Service Worker =====
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').then((reg) => {
+                console.log('SW registered, scope:', reg.scope);
+            }).catch((err) => {
+                console.warn('SW registration failed:', err);
+            });
+        }
     </script>
 </body>
 </html>
