@@ -363,24 +363,11 @@
             margin-left: 4px;
         }
 
-        @media (max-width: 500px) {
-            .direction-position-row {
-                flex-direction: column;
-                gap: 16px;
-            }
-        }
-
         /* Results grid */
         .results-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 12px;
-        }
-
-        @media (max-width: 500px) {
-            .results-grid {
-                grid-template-columns: 1fr;
-            }
         }
 
         /* ===== Action Button ===== */
@@ -601,6 +588,215 @@
 
         .animate-in {
             animation: fadeIn 0.3s ease forwards;
+        }
+
+        /* ===== Mobile Compact Layout ===== */
+        @media (max-width: 900px) {
+            .container {
+                padding: 8px;
+            }
+            header {
+                margin-bottom: 8px;
+                padding: 6px 0;
+            }
+            header h1 {
+                font-size: 1.3rem;
+            }
+            header p {
+                display: none;
+            }
+            .main-grid {
+                gap: 8px;
+                margin-bottom: 8px;
+            }
+            .card {
+                padding: 12px;
+                border-radius: 10px;
+            }
+            .card-title {
+                font-size: 0.95rem;
+                margin-bottom: 10px;
+            }
+            .card-title::before {
+                height: 16px;
+                width: 3px;
+            }
+            .form-group {
+                margin-bottom: 8px;
+            }
+            .form-label {
+                font-size: 0.78rem;
+                margin-bottom: 4px;
+            }
+            .form-input {
+                padding: 8px 10px;
+                font-size: 0.9rem;
+                border-radius: 8px;
+            }
+            .error-text {
+                font-size: 0.7rem;
+                margin-top: 2px;
+                min-height: 0;
+            }
+            .error-text:not(.visible) {
+                display: none;
+            }
+            .radio-pill label {
+                padding: 6px 12px;
+                font-size: 0.82rem;
+                border-radius: 6px;
+            }
+            .radio-group, .risk-group {
+                gap: 6px;
+            }
+            .risk-group .radio-pill label {
+                padding: 6px 10px;
+            }
+            .risk-custom input {
+                width: 65px;
+                padding: 6px 8px;
+            }
+            .result-card {
+                padding: 10px 12px;
+                border-radius: 8px;
+            }
+            .result-label {
+                font-size: 0.72rem;
+                margin-bottom: 2px;
+            }
+            .result-value {
+                font-size: 1.1rem;
+            }
+            .result-value.large {
+                font-size: 1.5rem;
+            }
+            .results-container {
+                gap: 8px;
+            }
+            .results-grid {
+                gap: 6px;
+            }
+            .direction-position-row {
+                gap: 12px;
+            }
+            .action-btn {
+                padding: 10px 16px;
+                font-size: 0.9rem;
+                margin-top: 6px;
+            }
+            .results-placeholder {
+                padding: 20px 12px;
+            }
+            .results-placeholder svg {
+                width: 36px;
+                height: 36px;
+                margin-bottom: 8px;
+            }
+            /* History compact */
+            .history-section {
+                margin-top: 8px;
+            }
+            .history-header {
+                margin-bottom: 8px;
+            }
+            .history-item {
+                padding: 8px 10px;
+                font-size: 0.8rem;
+            }
+            .history-list {
+                max-height: 200px;
+            }
+        }
+
+        /* ===== Landscape: two-column layout ===== */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .main-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .container {
+                padding: 4px 8px;
+            }
+            header {
+                margin-bottom: 4px;
+                padding: 2px 0;
+            }
+            header h1 {
+                font-size: 1.1rem;
+            }
+            .card {
+                padding: 8px 10px;
+                max-height: calc(100vh - 40px);
+                overflow-y: auto;
+            }
+            .card-title {
+                font-size: 0.85rem;
+                margin-bottom: 6px;
+            }
+            .form-group {
+                margin-bottom: 5px;
+            }
+            .form-label {
+                font-size: 0.72rem;
+                margin-bottom: 2px;
+            }
+            .form-input {
+                padding: 5px 8px;
+                font-size: 0.82rem;
+            }
+            .radio-pill label {
+                padding: 4px 10px;
+                font-size: 0.78rem;
+            }
+            .risk-group .radio-pill label {
+                padding: 4px 8px;
+            }
+            .result-value.large {
+                font-size: 1.3rem;
+            }
+            .result-value {
+                font-size: 1rem;
+            }
+            .action-btn {
+                padding: 6px 12px;
+                font-size: 0.82rem;
+                margin-top: 4px;
+            }
+            .results-placeholder {
+                padding: 12px 8px;
+            }
+            .results-placeholder svg {
+                width: 28px;
+                height: 28px;
+                margin-bottom: 4px;
+            }
+            .results-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 4px;
+            }
+            .result-card {
+                padding: 6px 8px;
+            }
+            .result-label {
+                font-size: 0.68rem;
+            }
+            .history-section {
+                margin-top: 6px;
+            }
+            .history-list {
+                max-height: 120px;
+            }
+        }
+
+        /* ===== Portrait: keep both panels visible ===== */
+        @media (max-width: 500px) and (orientation: portrait) {
+            .results-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .direction-position-row {
+                flex-direction: row;
+                gap: 12px;
+            }
         }
     </style>
 </head>
