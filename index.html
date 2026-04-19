@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交易仓位计算器</title>
+    <style>
+        /* ===== CSS Variables - 深色主题 ===== */
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a25;
+            --bg-input: #0f0f14;
+            --text-primary: #f0f0f5;
+            --text-secondary: #8b8b9e;
+            --text-muted: #5a5a6e;
+            --border-color: #2a2a3a;
+            --border-focus: #3d5afe;
+            --color-long: #00c853;
+            --color-short: #ff1744;
+            --color-warning: #ff9100;
+            --color-danger: #ff1744;
+            --color-accent: #7c4dff;
+            --color-accent-hover: #651fff;
+            --shadow-glow: 0 0 20px rgba(124, 77, 255, 0.15);
+            --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+            --transition-fast: 0.15s ease;
+            --transition-normal: 0.25s ease;
+        }
+
+        /* ===== Reset & Base ===== */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* ===== Layout ===== */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding: 16px 0;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--color-accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ===== Cards ===== */
+        .card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 24px;
+            box-shadow: var(--shadow-card);
+            transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: var(--color-accent);
+            border-radius: 2px;
+        }
+
+        /* ===== Form Elements ===== */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all var(--transition-fast);
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(61, 90, 254, 0.15);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-input:disabled {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .form-input.error {
+            border-color: var(--color-danger);
+        }
+
+        .error-text {
+            color: var(--color-danger);
+            font-size: 0.75rem;
+            margin-top: 6px;
+            min-height: 18px;
+            opacity: 0;
+            transition: opacity var(--transition-fast);
+        }
+
+        .error-text.visible {
+            opacity: 1;
+        }
+
+        /* ===== Radio Button Groups ===== */
+        .radio-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .radio-pill {
+            position: relative;
+        }
+
+        .radio-pill input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .radio-pill label {
+            display: block;
+            padding: 10px 18px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            transition: all var(--transition-fast);
+            user-select: none;
+        }
+
+        .radio-pill input:checked + label {
+            background: var(--color-accent);
+            border-color: var(--color-accent);
+            color: white;
+        }
+
+        .radio-pill label:hover {
+            border-color: var(--color-accent);
+            color: var(--text-primary);
+        }
+
+        /* Risk radio group */
+        .risk-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .risk-group .radio-pill label {
+            padding: 10px 16px;
+        }
+
+        .risk-custom {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            max-width: 0;
+            overflow: hidden;
+            transition: all var(--transition-normal);
+        }
+
+        .risk-custom.visible {
+            opacity: 1;
+            max-width: 200px;
+        }
+
+        .risk-custom input {
+            width: 80px;
+            padding: 10px 12px;
+        }
+
+        .risk-custom span {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* ===== Results Section ===== */
+        .results-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .result-card {
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            padding: 16px 20px;
+            border: 1px solid var(--border-color);
+            transition: all var(--transition-fast);
+        }
+
+        .result-card.highlight {
+            background: linear-gradient(135deg, var(--bg-tertiary) 0%, rgba(124, 77, 255, 0.1) 100%);
+            border-color: var(--color-accent);
+        }
+
+        .result-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .result-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .result-value.large {
+            font-size: 2.2rem;
+        }
+
+        .result-value.direction-long {
+            color: var(--color-long);
+        }
+
+        .result-value.direction-short {
+            color: var(--color-short);
+        }
+
+        .result-value.warning {
+            color: var(--color-warning);
+        }
+
+        .result-value.danger {
+            color: var(--color-danger);
+        }
+
+        .result-value.margin {
+            color: #ffc107;
+        }
+
+        .result-value.loss {
+            color: var(--color-short);
+        }
+
+        .warning-text {
+            font-size: 0.75rem;
+            margin-top: 4px;
+            color: var(--color-warning);
+        }
+
+        .danger-text {
+            font-size: 0.75rem;
+            margin-top: 4px;
+            color: var(--color-danger);
+        }
+
+        /* Direction & Position combined card */
+        .direction-position-row {
+            display: flex;
+            gap: 24px;
+        }
+
+        .direction-section,
+        .position-section {
+            flex: 1;
+        }
+
+        .position-value-wrapper {
+            display: flex;
+            align-items: baseline;
+        }
+
+        .position-unit {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-left: 4px;
+        }
+
+        @media (max-width: 500px) {
+            .direction-position-row {
+                flex-direction: column;
+                gap: 16px;
+            }
+        }
+
+        /* Results grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        @media (max-width: 500px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ===== Action Button ===== */
+        .action-btn {
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            margin-top: 8px;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .action-btn:active {
+            transform: translateY(0);
+        }
+
+        .action-btn:disabled {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* ===== History Section ===== */
+        .history-section {
+            margin-top: 24px;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .history-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .history-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: var(--color-accent);
+            border-radius: 2px;
+        }
+
+        .history-count {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .history-list {
+            max-height: 320px;
+            overflow-y: auto;
+            border-radius: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .history-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .history-list::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+            border-radius: 0 12px 12px 0;
+        }
+
+        .history-list::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        .history-list::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background var(--transition-fast);
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .history-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            min-width: 70px;
+        }
+
+        .history-market {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            min-width: 50px;
+            text-align: center;
+            padding: 2px 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            margin: 0 12px;
+        }
+
+        .history-direction {
+            font-size: 0.8rem;
+            font-weight: 600;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .history-direction.long {
+            color: var(--color-long);
+        }
+
+        .history-direction.short {
+            color: var(--color-short);
+        }
+
+        .history-prices {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin: 0 12px;
+            flex: 1;
+        }
+
+        .history-amount {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            text-align: right;
+            margin-right: 12px;
+        }
+
+        .history-loss {
+            font-size: 0.85rem;
+            color: var(--color-short);
+            text-align: right;
+            min-width: 80px;
+        }
+
+        .history-delete {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 6px;
+            margin-left: 8px;
+            transition: all var(--transition-fast);
+        }
+
+        .history-delete:hover {
+            background: rgba(255, 23, 68, 0.1);
+            color: var(--color-danger);
+        }
+
+        .history-empty {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Hidden state */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Results placeholder */
+        .results-placeholder {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .results-placeholder svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in {
+            animation: fadeIn 0.3s ease forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>交易仓位计算器</h1>
+            <p>专业风险管理工具 · 实时计算 · 历史记录</p>
+        </header>
+
+        <div class="main-grid">
+            <!-- 输入区 -->
+            <div class="card">
+                <h2 class="card-title">输入参数</h2>
+                
+                <!-- 总金额 -->
+                <div class="form-group">
+                    <label class="form-label">账户总金额</label>
+                    <input type="number" id="totalAmount" class="form-input" placeholder="请输入账户总资产" step="1">
+                    <div class="error-text" id="error-totalAmount"></div>
+                </div>
+
+                <!-- 风险百分比 -->
+                <div class="form-group">
+                    <label class="form-label">单笔风险比例</label>
+                    <div class="risk-group">
+                        <div class="radio-pill">
+                            <input type="radio" name="riskPercent" id="risk2" value="2" checked>
+                            <label for="risk2">2%</label>
+                        </div>
+                        <div class="radio-pill">
+                            <input type="radio" name="riskPercent" id="risk3" value="3">
+                            <label for="risk3">3%</label>
+                        </div>
+                        <div class="radio-pill">
+                            <input type="radio" name="riskPercent" id="risk4" value="4">
+                            <label for="risk4">4%</label>
+                        </div>
+                        <div class="radio-pill">
+                            <input type="radio" name="riskPercent" id="risk5" value="5">
+                            <label for="risk5">5%</label>
+                        </div>
+                        <div class="radio-pill">
+                            <input type="radio" name="riskPercent" id="riskCustom" value="custom">
+                            <label for="riskCustom">自定义</label>
+                        </div>
+                        <div class="risk-custom" id="riskCustomInput">
+                            <input type="number" id="riskCustomValue" class="form-input" placeholder="比例" step="1" min="1" max="100">
+                            <span>%</span>
+                        </div>
+                    </div>
+                    <div class="error-text" id="error-riskPercent"></div>
+                </div>
+
+                <!-- 当前价格 -->
+                <div class="form-group">
+                    <label class="form-label">当前价格</label>
+                    <input type="number" id="currentPrice" class="form-input" placeholder="请输入当前价格">
+                    <div class="error-text" id="error-currentPrice"></div>
+                </div>
+
+                <!-- 止损价格 -->
+                <div class="form-group">
+                    <label class="form-label">止损价格 <span id="stopLossDiffPercent" style="color: var(--color-short); font-weight: 600;"></span></label>
+                    <input type="number" id="stopLossPrice" class="form-input" placeholder="请输入止损价格">
+                    <div class="error-text" id="error-stopLossPrice"></div>
+                </div>
+
+                <!-- 市场类型 -->
+                <div class="form-group">
+                    <label class="form-label">市场类型</label>
+                    <div class="radio-group">
+                        <div class="radio-pill">
+                            <input type="radio" name="marketType" id="marketA" value="ashare" checked>
+                            <label for="marketA">A股</label>
+                        </div>
+                        <div class="radio-pill">
+                            <input type="radio" name="marketType" id="marketFutures" value="futures">
+                            <label for="marketFutures">期货</label>
+                        </div>
+                        <div class="radio-pill">
+                            <input type="radio" name="marketType" id="marketCrypto" value="crypto">
+                            <label for="marketCrypto">加密</label>
+                        </div>
+                        <div class="radio-pill">
+                            <input type="radio" name="marketType" id="marketUS" value="usstock">
+                            <label for="marketUS">美股</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 每手倍数/每手股数 - 根据市场类型显示不同标签 -->
+                <div class="form-group" id="lotSizeGroup">
+                    <label class="form-label" id="lotSizeLabel">每手股数</label>
+                    <input type="number" id="lotSize" class="form-input" value="100" step="1" min="1">
+                    <div class="error-text" id="error-lotSize"></div>
+                </div>
+
+                <!-- 最低保证金比率 -->
+                <div class="form-group" id="marginRatioGroup">
+                    <label class="form-label">最低保证金比率 (%)</label>
+                    <input type="number" id="marginRatio" class="form-input" placeholder="请输入保证金比率" step="1" min="1" max="100">
+                    <div class="error-text" id="error-marginRatio"></div>
+                </div>
+
+            </div>
+
+            <!-- 结果区 -->
+            <div class="card">
+                <h2 class="card-title">计算结果</h2>
+                
+                <div id="resultsPlaceholder" class="results-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                    <p>请输入参数查看计算结果</p>
+                </div>
+
+                <div id="resultsContainer" class="results-container hidden">
+                    <!-- 交易方向和持仓数量合并展示 -->
+                    <div class="result-card highlight">
+                        <div class="direction-position-row">
+                            <div class="direction-section">
+                                <div class="result-label">交易方向</div>
+                                <div class="result-value large" id="directionValue">--</div>
+                            </div>
+                            <div class="position-section">
+                                <div class="result-label" id="positionLabel">持仓数量</div>
+                                <div class="position-value-wrapper">
+                                    <span class="result-value large" id="positionValue">--</span>
+                                    <span class="position-unit" id="positionUnit"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="danger-text hidden" id="marginWarning"></div>
+                    </div>
+
+                    <!-- 其他结果 -->
+                    <div class="results-grid">
+                        <div class="result-card">
+                            <div class="result-label">仓位总金额</div>
+                            <div class="result-value" id="positionAmountValue">--</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-label">所需保证金</div>
+                            <div class="result-value margin" id="marginValue">--</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-label">实际止损亏损</div>
+                            <div class="result-value loss" id="lossValue">--</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-label">资金占比</div>
+                            <div class="result-value" id="ratioValue">--</div>
+                            <div class="warning-text hidden" id="ratioWarning">占比偏高，注意风险</div>
+                            <div class="danger-text hidden" id="ratioDanger">占比过高，建议减仓</div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="action-btn" id="recordBtn">记录当前计算 (Enter)</button>
+            </div>
+        </div>
+
+        <!-- 历史记录 -->
+        <div class="card history-section">
+            <div class="history-header">
+                <h2 class="history-title">历史记录</h2>
+                <span class="history-count" id="historyCount">0 / 20</span>
+            </div>
+            <div class="history-list" id="historyList">
+                <div class="history-empty">暂无历史记录</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== 状态管理 =====
+        const state = {
+            totalAmount: 0,
+            riskPercent: 2,
+            riskCustomValue: '',
+            currentPrice: 0,
+            stopLossPrice: 0,
+            marketType: 'ashare',
+            marginRatio: 100,
+            lotSize: 100,
+            errors: {}
+        };
+
+        // ===== DOM 元素 =====
+        const elements = {
+            totalAmount: document.getElementById('totalAmount'),
+            riskRadios: document.querySelectorAll('input[name="riskPercent"]'),
+            riskCustomInput: document.getElementById('riskCustomInput'),
+            riskCustomValue: document.getElementById('riskCustomValue'),
+            currentPrice: document.getElementById('currentPrice'),
+            stopLossPrice: document.getElementById('stopLossPrice'),
+            marketRadios: document.querySelectorAll('input[name="marketType"]'),
+            lotSizeGroup: document.getElementById('lotSizeGroup'),
+            lotSize: document.getElementById('lotSize'),
+            lotSizeLabel: document.getElementById('lotSizeLabel'),
+            marginRatioGroup: document.getElementById('marginRatioGroup'),
+            marginRatio: document.getElementById('marginRatio'),
+            recordBtn: document.getElementById('recordBtn'),
+            resultsPlaceholder: document.getElementById('resultsPlaceholder'),
+            resultsContainer: document.getElementById('resultsContainer'),
+            directionValue: document.getElementById('directionValue'),
+            positionLabel: document.getElementById('positionLabel'),
+            positionValue: document.getElementById('positionValue'),
+            positionUnit: document.getElementById('positionUnit'),
+            marginWarning: document.getElementById('marginWarning'),
+            positionAmountValue: document.getElementById('positionAmountValue'),
+            marginValue: document.getElementById('marginValue'),
+            lossValue: document.getElementById('lossValue'),
+            ratioValue: document.getElementById('ratioValue'),
+            ratioWarning: document.getElementById('ratioWarning'),
+            ratioDanger: document.getElementById('ratioDanger'),
+            historyList: document.getElementById('historyList'),
+            historyCount: document.getElementById('historyCount')
+        };
+
+        // ===== 工具函数 =====
+        const formatNumber = (num, decimals = 2) => {
+            if (isNaN(num) || !isFinite(num)) return '--';
+            return num.toLocaleString('zh-CN', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            });
+        };
+
+        const showError = (field, message) => {
+            const errorEl = document.getElementById(`error-${field}`);
+            const inputEl = document.getElementById(field);
+            if (errorEl) {
+                errorEl.textContent = message;
+                errorEl.classList.add('visible');
+            }
+            if (inputEl) inputEl.classList.add('error');
+            state.errors[field] = message;
+        };
+
+        const clearError = (field) => {
+            const errorEl = document.getElementById(`error-${field}`);
+            const inputEl = document.getElementById(field);
+            if (errorEl) {
+                errorEl.textContent = '';
+                errorEl.classList.remove('visible');
+            }
+            if (inputEl) inputEl.classList.remove('error');
+            delete state.errors[field];
+        };
+
+        const hasErrors = () => Object.keys(state.errors).length > 0;
+
+        // ===== 市场类型联动 =====
+        const updateMarketUI = () => {
+            const marketType = state.marketType;
+            
+            // 每手倍数/股数 - 根据市场类型设置
+            let lotSize = 1;
+            let lotSizeLabel = '每手股数';
+            let isLotSizeEditable = false;
+            
+            switch (marketType) {
+                case 'ashare':
+                    lotSize = 100;
+                    lotSizeLabel = '每手股数';
+                    isLotSizeEditable = false;
+                    elements.lotSizeGroup.classList.remove('hidden');
+                    break;
+                case 'usstock':
+                    lotSize = 1;
+                    lotSizeLabel = '每手股数';
+                    isLotSizeEditable = false;
+                    elements.lotSizeGroup.classList.remove('hidden');
+                    break;
+                case 'futures':
+                    lotSizeLabel = '每手倍数';
+                    isLotSizeEditable = true;
+                    elements.lotSizeGroup.classList.remove('hidden');
+                    elements.lotSize.value = '';
+                    elements.lotSize.placeholder = '请输入每手倍数';
+                    state.lotSize = 0;
+                    break;
+                case 'crypto':
+                    lotSize = 1;
+                    elements.lotSizeGroup.classList.add('hidden');
+                    break;
+            }
+            
+            elements.lotSizeLabel.textContent = lotSizeLabel;
+            if (marketType !== 'futures') {
+                elements.lotSize.value = lotSize;
+                elements.lotSize.placeholder = '';
+                state.lotSize = lotSize;
+                clearError('lotSize');
+            }
+            elements.lotSize.disabled = !isLotSizeEditable;
+
+            // 保证金比率
+            if (marketType === 'ashare' || marketType === 'usstock') {
+                elements.marginRatioGroup.classList.add('hidden');
+                state.marginRatio = 100;
+            } else if (marketType === 'crypto') {
+                elements.marginRatioGroup.classList.remove('hidden');
+                elements.marginRatio.value = 10;
+                state.marginRatio = 10;
+            } else {
+                elements.marginRatioGroup.classList.remove('hidden');
+                elements.marginRatio.value = '';
+                state.marginRatio = 0;
+            }
+        };
+
+        // ===== 风险百分比联动 =====
+        const updateRiskUI = () => {
+            const customRadio = document.getElementById('riskCustom');
+            if (customRadio.checked) {
+                elements.riskCustomInput.classList.add('visible');
+                elements.riskCustomValue.focus();
+            } else {
+                elements.riskCustomInput.classList.remove('visible');
+            }
+        };
+
+        // ===== 输入验证 =====
+        const validateInputs = () => {
+            let isValid = true;
+
+            // 总金额
+            if (!state.totalAmount || state.totalAmount <= 0) {
+                showError('totalAmount', '请输入大于0的金额');
+                isValid = false;
+            } else {
+                clearError('totalAmount');
+            }
+
+            // 风险百分比
+            let riskPercent = state.riskPercent;
+            if (document.getElementById('riskCustom').checked) {
+                riskPercent = parseFloat(state.riskCustomValue);
+                if (!riskPercent || riskPercent <= 0 || riskPercent >= 100) {
+                    showError('riskPercent', '风险比例必须在0-100之间');
+                    isValid = false;
+                } else {
+                    clearError('riskPercent');
+                }
+            } else {
+                clearError('riskPercent');
+            }
+
+            // 当前价格
+            if (!state.currentPrice || state.currentPrice <= 0) {
+                showError('currentPrice', '请输入大于0的价格');
+                isValid = false;
+            } else {
+                clearError('currentPrice');
+            }
+
+            // 止损价格
+            if (!state.stopLossPrice || state.stopLossPrice <= 0) {
+                showError('stopLossPrice', '请输入大于0的价格');
+                isValid = false;
+            } else if (state.currentPrice && state.stopLossPrice && state.currentPrice === state.stopLossPrice) {
+                showError('stopLossPrice', '止损价格不能等于当前价格');
+                isValid = false;
+            } else {
+                clearError('stopLossPrice');
+            }
+
+            // 每手倍数（期货）
+            if (state.marketType === 'futures') {
+                if (!state.lotSize || state.lotSize <= 0) {
+                    showError('lotSize', '请输入大于0的每手倍数');
+                    isValid = false;
+                } else {
+                    clearError('lotSize');
+                }
+            }
+
+            // 保证金比率
+            if (state.marketType !== 'ashare' && state.marketType !== 'usstock') {
+                if (!state.marginRatio || state.marginRatio <= 0 || state.marginRatio > 100) {
+                    showError('marginRatio', '保证金比率必须在0-100之间');
+                    isValid = false;
+                } else {
+                    clearError('marginRatio');
+                }
+            }
+
+            return isValid;
+        };
+
+        // ===== 核心计算 =====
+        const calculate = () => {
+            if (!validateInputs()) {
+                elements.resultsPlaceholder.classList.remove('hidden');
+                elements.resultsContainer.classList.add('hidden');
+                elements.recordBtn.disabled = true;
+                document.getElementById('stopLossDiffPercent').textContent = '';
+                return;
+            }
+
+            elements.recordBtn.disabled = false;
+            elements.resultsPlaceholder.classList.add('hidden');
+            elements.resultsContainer.classList.remove('hidden');
+
+            // 获取参数
+            const totalAmount = parseFloat(state.totalAmount);
+            let riskPercent = state.riskPercent;
+            if (document.getElementById('riskCustom').checked) {
+                riskPercent = parseFloat(state.riskCustomValue);
+            }
+            const currentPrice = parseFloat(state.currentPrice);
+            const stopLossPrice = parseFloat(state.stopLossPrice);
+            const marketType = state.marketType;
+
+            // 方向判断
+            const isLong = currentPrice > stopLossPrice;
+            const direction = isLong ? '做多' : '做空';
+
+            // 止损与现价的百分比差值
+            const diffPercent = ((stopLossPrice - currentPrice) / currentPrice * 100).toFixed(2);
+            const diffSign = parseFloat(diffPercent) > 0 ? '+' : '';
+            document.getElementById('stopLossDiffPercent').textContent = `(${diffSign}${diffPercent}%)`;
+
+            // 每手股数/乘数
+            let lotSize = 1;
+            if (marketType === 'ashare') lotSize = 100;
+            else if (marketType === 'usstock') lotSize = 1;
+            else if (marketType === 'futures') lotSize = parseFloat(state.lotSize) || 1;
+
+            // 保证金比率
+            let marginRatio = 1;
+            if (marketType !== 'ashare' && marketType !== 'usstock') {
+                marginRatio = parseFloat(state.marginRatio) / 100;
+            }
+
+            let positionSize, positionAmount, margin, actualLoss, ratio;
+
+            if (marketType === 'crypto') {
+                // 加密市场特殊处理（无"手"概念）
+                const priceDiff = Math.abs(currentPrice - stopLossPrice);
+                const riskAmount = totalAmount * (riskPercent / 100);
+                
+                // 持仓数量(币数) = 风险金额 / 每单位亏损(价差)
+                positionSize = riskAmount / priceDiff;
+                positionSize = Math.floor(positionSize * 100) / 100; // 向下截断2位小数
+                positionAmount = positionSize * currentPrice; // 仓位总金额 = 数量 × 价格
+                
+                margin = positionAmount * marginRatio;
+                actualLoss = positionSize * priceDiff;
+                ratio = (margin / totalAmount) * 100;
+
+                elements.positionLabel.textContent = '持仓数量';
+                elements.positionUnit.textContent = '';
+            } else {
+                // 其他市场
+                const perLotLoss = Math.abs(currentPrice - stopLossPrice) * lotSize;
+                const maxRiskAmount = totalAmount * (riskPercent / 100);
+                
+                positionSize = Math.floor(maxRiskAmount / perLotLoss);
+                positionAmount = positionSize * lotSize * currentPrice;
+                margin = positionAmount * marginRatio;
+                actualLoss = positionSize * perLotLoss;
+                ratio = (margin / totalAmount) * 100;
+
+                // A股和美股显示股数
+                if (marketType === 'ashare') {
+                    positionSize = positionSize * lotSize;
+                }
+
+                elements.positionLabel.textContent = '持仓数量';
+                // 设置单位显示
+                if (marketType === 'futures') {
+                    elements.positionUnit.textContent = ' 手';
+                } else if (marketType === 'ashare' || marketType === 'usstock') {
+                    elements.positionUnit.textContent = ' 股';
+                }
+            }
+            
+            // 检查是否能开仓（保证金是否超过总资产）
+            let canOpenPosition = true;
+            let marginWarning = '';
+            if (marketType === 'futures' || marketType === 'crypto') {
+                if (margin > totalAmount) {
+                    canOpenPosition = false;
+                    marginWarning = '保证金超过总资产，无法开仓';
+                }
+            } else {
+                if (positionAmount > totalAmount) {
+                    canOpenPosition = false;
+                    marginWarning = '仓位金额超过总资产，无法开仓';
+                }
+            }
+
+            // 更新UI
+            elements.directionValue.textContent = direction;
+            elements.directionValue.className = `result-value large ${isLong ? 'direction-long' : 'direction-short'}`;
+            
+            // 显示持仓数量和单位
+            elements.positionValue.textContent = formatNumber(positionSize, marketType === 'crypto' ? 4 : 0);
+            
+            // 显示保证金警告
+            elements.marginWarning.textContent = marginWarning;
+            elements.marginWarning.classList.toggle('hidden', canOpenPosition);
+            elements.positionAmountValue.textContent = '¥' + formatNumber(positionAmount);
+            elements.marginValue.textContent = '¥' + formatNumber(margin);
+            elements.lossValue.textContent = '¥' + formatNumber(actualLoss);
+            elements.ratioValue.textContent = formatNumber(ratio) + '%';
+
+            // 资金占比警告
+            elements.ratioValue.className = 'result-value';
+            elements.ratioWarning.classList.add('hidden');
+            elements.ratioDanger.classList.add('hidden');
+
+            if (ratio > 50) {
+                elements.ratioValue.classList.add('danger');
+                elements.ratioDanger.classList.remove('hidden');
+            } else if (ratio > 35) {
+                elements.ratioValue.classList.add('warning');
+                elements.ratioWarning.classList.remove('hidden');
+            }
+
+            // 保存计算结果用于记录
+            state.calcResult = {
+                direction,
+                positionSize,
+                positionAmount,
+                margin,
+                actualLoss,
+                ratio
+            };
+        };
+
+        // ===== 历史记录 =====
+        const HISTORY_KEY = 'trade-position-history';
+        const MAX_HISTORY = 20;
+
+        const getHistory = () => {
+            try {
+                const data = localStorage.getItem(HISTORY_KEY);
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                return [];
+            }
+        };
+
+        const saveHistory = (history) => {
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+        };
+
+        const addHistoryRecord = () => {
+            if (!state.calcResult) return;
+
+            const history = getHistory();
+            const record = {
+                id: Date.now(),
+                timestamp: new Date().toISOString(),
+                totalAmount: state.totalAmount,
+                riskPercent: document.getElementById('riskCustom').checked ? state.riskCustomValue : state.riskPercent,
+                currentPrice: state.currentPrice,
+                stopLossPrice: state.stopLossPrice,
+                marketType: state.marketType,
+                lotSize: state.lotSize,
+                marginRatio: state.marginRatio,
+                ...state.calcResult
+            };
+
+            history.unshift(record);
+            if (history.length > MAX_HISTORY) {
+                history.pop();
+            }
+
+            saveHistory(history);
+            renderHistory();
+        };
+
+        const deleteHistoryRecord = (id) => {
+            const history = getHistory().filter(r => r.id !== id);
+            saveHistory(history);
+            renderHistory();
+        };
+
+        const loadHistoryRecord = (record) => {
+            elements.totalAmount.value = record.totalAmount;
+            state.totalAmount = record.totalAmount;
+
+            // 风险百分比
+            const risk = parseFloat(record.riskPercent);
+            if (risk === 2) {
+                document.getElementById('risk2').checked = true;
+            } else if (risk === 3) {
+                document.getElementById('risk3').checked = true;
+            } else if (risk === 4) {
+                document.getElementById('risk4').checked = true;
+            } else if (risk === 5) {
+                document.getElementById('risk5').checked = true;
+            } else {
+                document.getElementById('riskCustom').checked = true;
+                elements.riskCustomValue.value = risk;
+                state.riskCustomValue = risk;
+            }
+            state.riskPercent = risk;
+            updateRiskUI();
+
+            elements.currentPrice.value = record.currentPrice;
+            state.currentPrice = record.currentPrice;
+
+            elements.stopLossPrice.value = record.stopLossPrice;
+            state.stopLossPrice = record.stopLossPrice;
+
+            // 市场类型
+            document.querySelector(`input[name="marketType"][value="${record.marketType}"]`).checked = true;
+            state.marketType = record.marketType;
+            updateMarketUI();
+
+            if (record.marketType === 'futures') {
+                elements.lotSize.value = record.lotSize;
+                state.lotSize = record.lotSize;
+            }
+
+            if (record.marketType !== 'ashare' && record.marketType !== 'usstock') {
+                elements.marginRatio.value = record.marginRatio;
+                state.marginRatio = record.marginRatio;
+            }
+
+            // 清除所有错误
+            Object.keys(state.errors).forEach(clearError);
+
+            // 触发计算
+            calculate();
+        };
+
+        const formatTime = (isoString) => {
+            const date = new Date(isoString);
+            return date.toLocaleString('zh-CN', {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        };
+
+        const getMarketLabel = (type) => {
+            const labels = {
+                ashare: 'A股',
+                futures: '期货',
+                crypto: '加密',
+                usstock: '美股'
+            };
+            return labels[type] || type;
+        };
+
+        const renderHistory = () => {
+            const history = getHistory();
+            elements.historyCount.textContent = `${history.length} / ${MAX_HISTORY}`;
+
+            if (history.length === 0) {
+                elements.historyList.innerHTML = '<div class="history-empty">暂无历史记录</div>';
+                return;
+            }
+
+            elements.historyList.innerHTML = history.map(record => `
+                <div class="history-item animate-in" data-id="${record.id}">
+                    <span class="history-time">${formatTime(record.timestamp)}</span>
+                    <span class="history-market">${getMarketLabel(record.marketType)}</span>
+                    <span class="history-direction ${record.direction === '做多' ? 'long' : 'short'}">${record.direction}</span>
+                    <span class="history-prices">${parseFloat(record.currentPrice).toFixed(2)} → ${parseFloat(record.stopLossPrice).toFixed(2)}</span>
+                    <span class="history-amount">¥${formatNumber(record.positionAmount)}</span>
+                    <span class="history-loss">-¥${formatNumber(record.actualLoss)}</span>
+                    <button class="history-delete" data-id="${record.id}" title="删除">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+
+            // 绑定事件
+            elements.historyList.querySelectorAll('.history-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.history-delete')) return;
+                    const record = history.find(r => r.id === parseInt(item.dataset.id));
+                    if (record) loadHistoryRecord(record);
+                });
+            });
+
+            elements.historyList.querySelectorAll('.history-delete').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteHistoryRecord(parseInt(btn.dataset.id));
+                });
+            });
+        };
+
+        // ===== 事件绑定 =====
+        const initEventListeners = () => {
+            // 总金额
+            elements.totalAmount.addEventListener('input', (e) => {
+                state.totalAmount = e.target.value;
+                calculate();
+            });
+
+            // 风险百分比
+            elements.riskRadios.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    state.riskPercent = parseFloat(radio.value);
+                    updateRiskUI();
+                    calculate();
+                });
+            });
+
+            elements.riskCustomValue.addEventListener('input', (e) => {
+                state.riskCustomValue = e.target.value;
+                calculate();
+            });
+
+            // 当前价格
+            elements.currentPrice.addEventListener('input', (e) => {
+                state.currentPrice = e.target.value;
+                calculate();
+            });
+
+            // 止损价格
+            elements.stopLossPrice.addEventListener('input', (e) => {
+                state.stopLossPrice = e.target.value;
+                calculate();
+            });
+
+            // 市场类型
+            elements.marketRadios.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    state.marketType = radio.value;
+                    updateMarketUI();
+                    calculate();
+                });
+            });
+
+            // 每手倍数/股数
+            elements.lotSize.addEventListener('input', (e) => {
+                state.lotSize = e.target.value;
+                calculate();
+            });
+
+            // 保证金比率
+            elements.marginRatio.addEventListener('input', (e) => {
+                state.marginRatio = e.target.value;
+                calculate();
+            });
+
+            // 记录按钮
+            elements.recordBtn.addEventListener('click', addHistoryRecord);
+
+            // Enter 键快捷记录
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+                    // 如果当前焦点在输入框，不触发记录
+                    if (e.target.tagName === 'INPUT') return;
+                    if (!elements.recordBtn.disabled) {
+                        addHistoryRecord();
+                    }
+                }
+            });
+        };
+
+        // ===== 初始化 =====
+        const init = () => {
+            updateMarketUI();
+            updateRiskUI();
+            renderHistory();
+            initEventListeners();
+        };
+
+        init();
+    </script>
+</body>
+</html>
