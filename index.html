@@ -624,7 +624,7 @@
 
                 <!-- 风险百分比 -->
                 <div class="form-group">
-                    <label class="form-label">单笔风险比例</label>
+                    <label class="form-label">单笔风险比例 <span id="riskAmountDisplay" style="color: var(--color-short); font-weight: 600;"></span></label>
                     <div class="risk-group">
                         <div class="radio-pill">
                             <input type="radio" name="riskPercent" id="risk2" value="2" checked>
@@ -663,7 +663,7 @@
 
                 <!-- 止损价格 -->
                 <div class="form-group">
-                    <label class="form-label">止损价格 <span id="stopLossDiffPercent" style="color: var(--color-short); font-weight: 600;"></span></label>
+                    <label class="form-label">止损价格 <span id="stopLossDiffPercent" style="color: var(--color-short); font-weight: 600;"></span> <span id="stopLossPerLot" style="color: var(--color-short); font-weight: 600;"></span></label>
                     <input type="number" id="stopLossPrice" class="form-input" placeholder="请输入止损价格">
                     <div class="error-text" id="error-stopLossPrice"></div>
                 </div>
@@ -1001,6 +1001,8 @@
                 elements.resultsContainer.classList.add('hidden');
                 elements.recordBtn.disabled = true;
                 document.getElementById('stopLossDiffPercent').textContent = '';
+                document.getElementById('stopLossPerLot').textContent = '';
+                document.getElementById('riskAmountDisplay').textContent = '';
                 return;
             }
 
@@ -1027,11 +1029,30 @@
             const diffSign = parseFloat(diffPercent) > 0 ? '+' : '';
             document.getElementById('stopLossDiffPercent').textContent = `(${diffSign}${diffPercent}%)`;
 
+            // 风险金额
+            const riskAmountVal = totalAmount * (riskPercent / 100);
+            document.getElementById('riskAmountDisplay').textContent = `(¥${formatNumber(riskAmountVal)})`;
+
             // 每手股数/乘数
             let lotSize = 1;
             if (marketType === 'ashare') lotSize = 100;
             else if (marketType === 'usstock') lotSize = 1;
             else if (marketType === 'futures') lotSize = parseFloat(state.lotSize) || 1;
+
+            // 每手止损金额
+            if (marketType !== 'crypto') {
+                const perLotStopLoss = Math.abs(currentPrice - stopLossPrice) * lotSize;
+                document.getElementById('stopLossPerLot').textContent = `(每手亏损: ¥${formatNumber(perLotStopLoss)})`;
+                // 每手亏损超过风险金额时提示
+                if (perLotStopLoss > riskAmountVal) {
+                    showError('stopLossPrice', `每手亏损(¥${formatNumber(perLotStopLoss)})超过风险金额(¥${formatNumber(riskAmountVal)})，请缩小止损幅度或提高风险比例`);
+                } else {
+                    clearError('stopLossPrice');
+                }
+            } else {
+                document.getElementById('stopLossPerLot').textContent = '';
+                clearError('stopLossPrice');
+            }
 
             // 保证金比率
             let marginRatio = 1;
@@ -1088,12 +1109,12 @@
             if (marketType === 'futures' || marketType === 'crypto') {
                 if (margin > totalAmount) {
                     canOpenPosition = false;
-                    marginWarning = '保证金超过总资产，无法开仓';
+                    marginWarning = '保证金超过总资产，无法开仓。请增大止损幅度、降低风险比例或增加账户资金';
                 }
             } else {
                 if (positionAmount > totalAmount) {
                     canOpenPosition = false;
-                    marginWarning = '仓位金额超过总资产，无法开仓';
+                    marginWarning = '仓位金额超过总资产，无法开仓。请增大止损幅度、降低风险比例';
                 }
             }
 
@@ -1107,9 +1128,9 @@
             // 显示保证金警告
             elements.marginWarning.textContent = marginWarning;
             elements.marginWarning.classList.toggle('hidden', canOpenPosition);
-            elements.positionAmountValue.textContent = '¥' + formatNumber(positionAmount);
-            elements.marginValue.textContent = '¥' + formatNumber(margin);
-            elements.lossValue.textContent = '¥' + formatNumber(actualLoss);
+            elements.positionAmountValue.textContent = '¥' + formatNumber(positionAmount, 0);
+            elements.marginValue.textContent = '¥' + formatNumber(margin, 0);
+            elements.lossValue.textContent = '¥' + formatNumber(actualLoss, 0);
             elements.ratioValue.textContent = formatNumber(ratio) + '%';
 
             // 资金占比警告
