@@ -823,6 +823,10 @@
                     <label class="form-label">单笔风险比例 <span id="riskAmountDisplay" style="color: var(--color-short); font-weight: 600;"></span></label>
                     <div class="risk-group">
                         <div class="radio-pill">
+                            <input type="radio" name="riskPercent" id="risk1" value="1">
+                            <label for="risk1">1%</label>
+                        </div>
+                        <div class="radio-pill">
                             <input type="radio" name="riskPercent" id="risk2" value="2" checked>
                             <label for="risk2">2%</label>
                         </div>
@@ -1408,7 +1412,9 @@
 
             // 风险百分比
             const risk = parseFloat(record.riskPercent);
-            if (risk === 2) {
+            if (risk === 1) {
+                document.getElementById('risk1').checked = true;
+            } else if (risk === 2) {
                 document.getElementById('risk2').checked = true;
             } else if (risk === 3) {
                 document.getElementById('risk3').checked = true;
@@ -1584,12 +1590,81 @@
             });
         };
 
+        // ===== 初始化：从 DOM 同步状态（修复移动端后台恢复时 JS 状态丢失问题） =====
+        const syncStateFromDOM = () => {
+            // 总金额
+            const totalVal = parseFloat(elements.totalAmount.value);
+            if (!isNaN(totalVal) && totalVal > 0) {
+                state.totalAmount = elements.totalAmount.value;
+            }
+
+            // 风险百分比
+            const checkedRisk = document.querySelector('input[name="riskPercent"]:checked');
+            if (checkedRisk) {
+                if (checkedRisk.value === 'custom') {
+                    const customVal = parseFloat(elements.riskCustomValue.value);
+                    if (!isNaN(customVal) && customVal > 0) {
+                        state.riskPercent = customVal;
+                        state.riskCustomValue = elements.riskCustomValue.value;
+                    }
+                } else {
+                    state.riskPercent = parseFloat(checkedRisk.value);
+                }
+            }
+
+            // 当前价格
+            const priceVal = parseFloat(elements.currentPrice.value);
+            if (!isNaN(priceVal) && priceVal > 0) {
+                state.currentPrice = elements.currentPrice.value;
+            }
+
+            // 止损价格
+            const slVal = parseFloat(elements.stopLossPrice.value);
+            if (!isNaN(slVal) && slVal > 0) {
+                state.stopLossPrice = elements.stopLossPrice.value;
+            }
+
+            // 市场类型
+            const checkedMarket = document.querySelector('input[name="marketType"]:checked');
+            if (checkedMarket) {
+                state.marketType = checkedMarket.value;
+            }
+
+            // 每手倍数/股数（仅当字段可编辑时从 DOM 读取）
+            if (!elements.lotSize.disabled) {
+                const lotVal = parseFloat(elements.lotSize.value);
+                if (!isNaN(lotVal) && lotVal > 0) {
+                    state.lotSize = elements.lotSize.value;
+                }
+            }
+
+            // 保证金比率（仅当字段可见时从 DOM 读取）
+            if (!elements.marginRatioGroup.classList.contains('hidden')) {
+                const marginVal = parseFloat(elements.marginRatio.value);
+                if (!isNaN(marginVal) && marginVal > 0) {
+                    state.marginRatio = elements.marginRatio.value;
+                }
+            }
+        };
+
         // ===== 初始化 =====
         const init = () => {
+            // 先从 DOM 读取浏览器可能恢复的值（修复移动端后台恢复时 JS 状态丢失）
+            syncStateFromDOM();
+
             updateMarketUI();
             updateRiskUI();
+
+            // updateMarketUI 可能重置了部分字段，再次从 DOM 同步保留浏览器恢复的值
+            syncStateFromDOM();
+
             renderHistory();
             initEventListeners();
+
+            // 如果有已填写的值，自动触发计算
+            if (state.totalAmount || state.currentPrice || state.stopLossPrice) {
+                calculate();
+            }
         };
 
         init();
