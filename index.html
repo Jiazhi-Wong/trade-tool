@@ -827,6 +827,10 @@
                             <label for="risk1">1%</label>
                         </div>
                         <div class="radio-pill">
+                            <input type="radio" name="riskPercent" id="risk15" value="1.5">
+                            <label for="risk15">1.5%</label>
+                        </div>
+                        <div class="radio-pill">
                             <input type="radio" name="riskPercent" id="risk2" value="2" checked>
                             <label for="risk2">2%</label>
                         </div>
@@ -1414,6 +1418,8 @@
             const risk = parseFloat(record.riskPercent);
             if (risk === 1) {
                 document.getElementById('risk1').checked = true;
+            } else if (risk === 1.5) {
+                document.getElementById('risk15').checked = true;
             } else if (risk === 2) {
                 document.getElementById('risk2').checked = true;
             } else if (risk === 3) {
