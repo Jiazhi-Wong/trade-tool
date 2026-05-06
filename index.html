@@ -341,6 +341,27 @@
             color: var(--color-danger);
         }
 
+        .result-sub {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .tp-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tp-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .tp-value {
+            font-size: 1rem;
+        }
+
         /* Direction & Position combined card */
         .direction-position-row {
             display: flex;
@@ -954,12 +975,30 @@
                         <div class="result-card">
                             <div class="result-label">实际止损亏损</div>
                             <div class="result-value loss" id="lossValue">--</div>
+                            <div class="result-sub" id="stopLossPoints"></div>
                         </div>
                         <div class="result-card">
                             <div class="result-label">资金占比</div>
                             <div class="result-value" id="ratioValue">--</div>
                             <div class="warning-text hidden" id="ratioWarning">占比偏高，注意风险</div>
                             <div class="danger-text hidden" id="ratioDanger">占比过高，建议减仓</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-label">止盈价格（盈亏比）</div>
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
+                                <div class="tp-row">
+                                    <span class="tp-label">1 : 1</span>
+                                    <span class="result-value tp-value" id="tp1">--</span>
+                                </div>
+                                <div class="tp-row">
+                                    <span class="tp-label">3 : 1</span>
+                                    <span class="result-value tp-value" id="tp3">--</span>
+                                </div>
+                                <div class="tp-row">
+                                    <span class="tp-label">5 : 1</span>
+                                    <span class="result-value tp-value" id="tp5">--</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1023,7 +1062,90 @@
             ratioWarning: document.getElementById('ratioWarning'),
             ratioDanger: document.getElementById('ratioDanger'),
             historyList: document.getElementById('historyList'),
-            historyCount: document.getElementById('historyCount')
+            historyCount: document.getElementById('historyCount'),
+            stopLossPoints: document.getElementById('stopLossPoints'),
+            tp1: document.getElementById('tp1'),
+            tp3: document.getElementById('tp3'),
+            tp5: document.getElementById('tp5')
+        };
+
+        // ===== localStorage 配置持久化 =====
+        const CONFIG_KEY = 'trade-calc-config';
+
+        const saveConfigToStorage = () => {
+            const checkedRisk = document.querySelector('input[name="riskPercent"]:checked');
+            const config = {
+                totalAmount: elements.totalAmount.value,
+                riskRadioValue: checkedRisk ? checkedRisk.value : '2',
+                riskCustomValue: elements.riskCustomValue.value,
+                currentPrice: elements.currentPrice.value,
+                stopLossPrice: elements.stopLossPrice.value,
+                marketType: state.marketType,
+                lotSize: elements.lotSize.value,
+                marginRatio: elements.marginRatio.value
+            };
+            try {
+                localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+            } catch (e) { /* ignore */ }
+        };
+
+        const loadConfigFromStorage = () => {
+            try {
+                const data = localStorage.getItem(CONFIG_KEY);
+                if (!data) return null;
+                return JSON.parse(data);
+            } catch (e) {
+                return null;
+            }
+        };
+
+        const applySavedConfig = (config) => {
+            if (!config) return;
+
+            // 总金额
+            if (config.totalAmount) {
+                elements.totalAmount.value = config.totalAmount;
+                state.totalAmount = config.totalAmount;
+            }
+
+            // 风险百分比
+            if (config.riskRadioValue) {
+                const radio = document.querySelector(`input[name="riskPercent"][value="${config.riskRadioValue}"]`);
+                if (radio) {
+                    radio.checked = true;
+                    if (config.riskRadioValue === 'custom') {
+                        state.riskPercent = parseFloat(config.riskCustomValue) || 2;
+                        state.riskCustomValue = config.riskCustomValue || '';
+                        elements.riskCustomValue.value = config.riskCustomValue || '';
+                    } else {
+                        state.riskPercent = parseFloat(config.riskRadioValue);
+                        state.riskCustomValue = '';
+                    }
+                }
+            }
+
+            // 当前价格
+            if (config.currentPrice) {
+                elements.currentPrice.value = config.currentPrice;
+                state.currentPrice = config.currentPrice;
+            }
+
+            // 止损价格
+            if (config.stopLossPrice) {
+                elements.stopLossPrice.value = config.stopLossPrice;
+                state.stopLossPrice = config.stopLossPrice;
+            }
+
+            // 市场类型
+            if (config.marketType) {
+                const marketRadio = document.querySelector(`input[name="marketType"][value="${config.marketType}"]`);
+                if (marketRadio) {
+                    marketRadio.checked = true;
+                    state.marketType = config.marketType;
+                }
+            }
+
+            return config;
         };
 
         // ===== 工具函数 =====
@@ -1117,6 +1239,19 @@
                 elements.marginRatio.value = '';
                 state.marginRatio = 0;
             }
+
+            // 从 localStorage 恢复之前保存的期货/加密字段值
+            const savedConfig = loadConfigFromStorage();
+            if (savedConfig) {
+                if (marketType === 'futures' && savedConfig.lotSize) {
+                    elements.lotSize.value = savedConfig.lotSize;
+                    state.lotSize = savedConfig.lotSize;
+                }
+                if ((marketType === 'futures' || marketType === 'crypto') && savedConfig.marginRatio) {
+                    elements.marginRatio.value = savedConfig.marginRatio;
+                    state.marginRatio = savedConfig.marginRatio;
+                }
+            }
         };
 
         // ===== 风险百分比联动 =====
@@ -1207,6 +1342,10 @@
                 document.getElementById('stopLossDiffPercent').textContent = '';
                 document.getElementById('stopLossPerLot').textContent = '';
                 document.getElementById('riskAmountDisplay').textContent = '';
+                elements.stopLossPoints.textContent = '';
+                elements.tp1.textContent = '--';
+                elements.tp3.textContent = '--';
+                elements.tp5.textContent = '--';
                 return;
             }
 
@@ -1335,6 +1474,23 @@
             elements.positionAmountValue.textContent = '¥' + formatNumber(positionAmount, 0);
             elements.marginValue.textContent = '¥' + formatNumber(margin, 0);
             elements.lossValue.textContent = '¥' + formatNumber(actualLoss, 0);
+
+            // 止损点数
+            const stopLossPointsVal = Math.abs(currentPrice - stopLossPrice);
+            elements.stopLossPoints.textContent = `价差: ${formatNumber(stopLossPointsVal)} 点`;
+
+            // 止盈价格（盈亏比 1:1, 3:1, 5:1）
+            const priceDiff = Math.abs(currentPrice - stopLossPrice);
+            if (isLong) {
+                elements.tp1.textContent = formatNumber(currentPrice + priceDiff * 1);
+                elements.tp3.textContent = formatNumber(currentPrice + priceDiff * 3);
+                elements.tp5.textContent = formatNumber(currentPrice + priceDiff * 5);
+            } else {
+                elements.tp1.textContent = formatNumber(currentPrice - priceDiff * 1);
+                elements.tp3.textContent = formatNumber(currentPrice - priceDiff * 3);
+                elements.tp5.textContent = formatNumber(currentPrice - priceDiff * 5);
+            }
+
             elements.ratioValue.textContent = formatNumber(ratio) + '%';
 
             // 资金占比警告
@@ -1357,7 +1513,13 @@
                 positionAmount,
                 margin,
                 actualLoss,
-                ratio
+                ratio,
+                stopLossPoints: stopLossPointsVal,
+                takeProfit: {
+                    tp1: isLong ? currentPrice + priceDiff * 1 : currentPrice - priceDiff * 1,
+                    tp3: isLong ? currentPrice + priceDiff * 3 : currentPrice - priceDiff * 3,
+                    tp5: isLong ? currentPrice + priceDiff * 5 : currentPrice - priceDiff * 5
+                }
             };
         };
 
@@ -1460,6 +1622,9 @@
             // 清除所有错误
             Object.keys(state.errors).forEach(clearError);
 
+            // 持久化当前配置
+            saveConfigToStorage();
+
             // 触发计算
             calculate();
         };
@@ -1531,6 +1696,7 @@
             // 总金额
             elements.totalAmount.addEventListener('input', (e) => {
                 state.totalAmount = e.target.value;
+                saveConfigToStorage();
                 calculate();
             });
 
@@ -1539,24 +1705,28 @@
                 radio.addEventListener('change', () => {
                     state.riskPercent = parseFloat(radio.value);
                     updateRiskUI();
+                    saveConfigToStorage();
                     calculate();
                 });
             });
 
             elements.riskCustomValue.addEventListener('input', (e) => {
                 state.riskCustomValue = e.target.value;
+                saveConfigToStorage();
                 calculate();
             });
 
             // 当前价格
             elements.currentPrice.addEventListener('input', (e) => {
                 state.currentPrice = e.target.value;
+                saveConfigToStorage();
                 calculate();
             });
 
             // 止损价格
             elements.stopLossPrice.addEventListener('input', (e) => {
                 state.stopLossPrice = e.target.value;
+                saveConfigToStorage();
                 calculate();
             });
 
@@ -1565,6 +1735,7 @@
                 radio.addEventListener('change', () => {
                     state.marketType = radio.value;
                     updateMarketUI();
+                    saveConfigToStorage();
                     calculate();
                 });
             });
@@ -1572,12 +1743,14 @@
             // 每手倍数/股数
             elements.lotSize.addEventListener('input', (e) => {
                 state.lotSize = e.target.value;
+                saveConfigToStorage();
                 calculate();
             });
 
             // 保证金比率
             elements.marginRatio.addEventListener('input', (e) => {
                 state.marginRatio = e.target.value;
+                saveConfigToStorage();
                 calculate();
             });
 
@@ -1596,74 +1769,27 @@
             });
         };
 
-        // ===== 初始化：从 DOM 同步状态（修复移动端后台恢复时 JS 状态丢失问题） =====
-        const syncStateFromDOM = () => {
-            // 总金额
-            const totalVal = parseFloat(elements.totalAmount.value);
-            if (!isNaN(totalVal) && totalVal > 0) {
-                state.totalAmount = elements.totalAmount.value;
-            }
-
-            // 风险百分比
-            const checkedRisk = document.querySelector('input[name="riskPercent"]:checked');
-            if (checkedRisk) {
-                if (checkedRisk.value === 'custom') {
-                    const customVal = parseFloat(elements.riskCustomValue.value);
-                    if (!isNaN(customVal) && customVal > 0) {
-                        state.riskPercent = customVal;
-                        state.riskCustomValue = elements.riskCustomValue.value;
-                    }
-                } else {
-                    state.riskPercent = parseFloat(checkedRisk.value);
-                }
-            }
-
-            // 当前价格
-            const priceVal = parseFloat(elements.currentPrice.value);
-            if (!isNaN(priceVal) && priceVal > 0) {
-                state.currentPrice = elements.currentPrice.value;
-            }
-
-            // 止损价格
-            const slVal = parseFloat(elements.stopLossPrice.value);
-            if (!isNaN(slVal) && slVal > 0) {
-                state.stopLossPrice = elements.stopLossPrice.value;
-            }
-
-            // 市场类型
-            const checkedMarket = document.querySelector('input[name="marketType"]:checked');
-            if (checkedMarket) {
-                state.marketType = checkedMarket.value;
-            }
-
-            // 每手倍数/股数（仅当字段可编辑时从 DOM 读取）
-            if (!elements.lotSize.disabled) {
-                const lotVal = parseFloat(elements.lotSize.value);
-                if (!isNaN(lotVal) && lotVal > 0) {
-                    state.lotSize = elements.lotSize.value;
-                }
-            }
-
-            // 保证金比率（仅当字段可见时从 DOM 读取）
-            if (!elements.marginRatioGroup.classList.contains('hidden')) {
-                const marginVal = parseFloat(elements.marginRatio.value);
-                if (!isNaN(marginVal) && marginVal > 0) {
-                    state.marginRatio = elements.marginRatio.value;
-                }
-            }
-        };
-
         // ===== 初始化 =====
         const init = () => {
-            // 先从 DOM 读取浏览器可能恢复的值（修复移动端后台恢复时 JS 状态丢失）
-            syncStateFromDOM();
+            // 从 localStorage 恢复上次的配置
+            const savedConfig = loadConfigFromStorage();
+            applySavedConfig(savedConfig);
 
             updateMarketUI();
+
+            // updateMarketUI 可能重置了期货字段，从保存的配置中恢复
+            if (savedConfig) {
+                if (savedConfig.lotSize && state.marketType === 'futures') {
+                    elements.lotSize.value = savedConfig.lotSize;
+                    state.lotSize = savedConfig.lotSize;
+                }
+                if (savedConfig.marginRatio && (state.marketType === 'futures' || state.marketType === 'crypto')) {
+                    elements.marginRatio.value = savedConfig.marginRatio;
+                    state.marginRatio = savedConfig.marginRatio;
+                }
+            }
+
             updateRiskUI();
-
-            // updateMarketUI 可能重置了部分字段，再次从 DOM 同步保留浏览器恢复的值
-            syncStateFromDOM();
-
             renderHistory();
             initEventListeners();
 
