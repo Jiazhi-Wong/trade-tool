@@ -423,6 +423,25 @@
             box-shadow: none;
         }
 
+        .reset-btn {
+            width: 100%;
+            padding: 10px 20px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            margin-top: 8px;
+        }
+
+        .reset-btn:hover {
+            border-color: var(--color-danger);
+            color: var(--color-danger);
+            background: rgba(255, 23, 68, 0.05);
+        }
+
         /* ===== History Section ===== */
         .history-section {
             margin-top: 24px;
@@ -930,6 +949,8 @@
                     <div class="error-text" id="error-marginRatio"></div>
                 </div>
 
+                <button class="reset-btn" id="resetBtn">清空输入</button>
+
             </div>
 
             <!-- 结果区 -->
@@ -1066,7 +1087,8 @@
             stopLossPoints: document.getElementById('stopLossPoints'),
             tp1: document.getElementById('tp1'),
             tp3: document.getElementById('tp3'),
-            tp5: document.getElementById('tp5')
+            tp5: document.getElementById('tp5'),
+            resetBtn: document.getElementById('resetBtn')
         };
 
         // ===== localStorage 配置持久化 =====
@@ -1181,6 +1203,14 @@
 
         const hasErrors = () => Object.keys(state.errors).length > 0;
 
+        // 计算字符串中小数位数
+        const countDecimals = (val) => {
+            if (val === undefined || val === null || val === '') return 0;
+            const s = String(val);
+            const dot = s.indexOf('.');
+            return dot === -1 ? 0 : s.length - dot - 1;
+        };
+
         // ===== 市场类型联动 =====
         const updateMarketUI = () => {
             const marketType = state.marketType;
@@ -1263,6 +1293,59 @@
             } else {
                 elements.riskCustomInput.classList.remove('visible');
             }
+        };
+
+        // ===== 一键清空输入 =====
+        const resetAllInputs = () => {
+            // 清空所有输入框
+            elements.totalAmount.value = '';
+            elements.currentPrice.value = '';
+            elements.stopLossPrice.value = '';
+            elements.riskCustomValue.value = '';
+
+            // 重置单选按钮为默认值
+            document.getElementById('risk2').checked = true;
+            document.getElementById('marketA').checked = true;
+
+            // 重置状态
+            state.totalAmount = 0;
+            state.riskPercent = 2;
+            state.riskCustomValue = '';
+            state.currentPrice = 0;
+            state.stopLossPrice = 0;
+            state.marketType = 'ashare';
+            state.marginRatio = 100;
+            state.lotSize = 100;
+            state.errors = {};
+            state.calcResult = null;
+
+            // 清除所有错误显示
+            document.querySelectorAll('.error-text').forEach(el => {
+                el.textContent = '';
+                el.classList.remove('visible');
+            });
+            document.querySelectorAll('.form-input.error').forEach(el => {
+                el.classList.remove('error');
+            });
+
+            // 更新 UI
+            updateMarketUI();
+            updateRiskUI();
+
+            // 隐藏结果
+            elements.resultsPlaceholder.classList.remove('hidden');
+            elements.resultsContainer.classList.add('hidden');
+            elements.recordBtn.disabled = true;
+            document.getElementById('stopLossDiffPercent').textContent = '';
+            document.getElementById('stopLossPerLot').textContent = '';
+            document.getElementById('riskAmountDisplay').textContent = '';
+            elements.stopLossPoints.textContent = '';
+            elements.tp1.textContent = '--';
+            elements.tp3.textContent = '--';
+            elements.tp5.textContent = '--';
+
+            // 清除 localStorage 配置
+            localStorage.removeItem(CONFIG_KEY);
         };
 
         // ===== 输入验证 =====
@@ -1475,20 +1558,26 @@
             elements.marginValue.textContent = '¥' + formatNumber(margin, 0);
             elements.lossValue.textContent = '¥' + formatNumber(actualLoss, 0);
 
+            // 根据输入的小数位数决定显示精度（取两者中小数位多的）
+            const priceDecimals = Math.max(
+                countDecimals(elements.currentPrice.value),
+                countDecimals(elements.stopLossPrice.value)
+            );
+
             // 止损点数
             const stopLossPointsVal = Math.abs(currentPrice - stopLossPrice);
-            elements.stopLossPoints.textContent = `价差: ${formatNumber(stopLossPointsVal)} 点`;
+            elements.stopLossPoints.textContent = `价差: ${formatNumber(stopLossPointsVal, priceDecimals)} 点`;
 
             // 止盈价格（盈亏比 1:1, 3:1, 5:1）
             const priceDiff = Math.abs(currentPrice - stopLossPrice);
             if (isLong) {
-                elements.tp1.textContent = formatNumber(currentPrice + priceDiff * 1);
-                elements.tp3.textContent = formatNumber(currentPrice + priceDiff * 3);
-                elements.tp5.textContent = formatNumber(currentPrice + priceDiff * 5);
+                elements.tp1.textContent = formatNumber(currentPrice + priceDiff * 1, priceDecimals);
+                elements.tp3.textContent = formatNumber(currentPrice + priceDiff * 3, priceDecimals);
+                elements.tp5.textContent = formatNumber(currentPrice + priceDiff * 5, priceDecimals);
             } else {
-                elements.tp1.textContent = formatNumber(currentPrice - priceDiff * 1);
-                elements.tp3.textContent = formatNumber(currentPrice - priceDiff * 3);
-                elements.tp5.textContent = formatNumber(currentPrice - priceDiff * 5);
+                elements.tp1.textContent = formatNumber(currentPrice - priceDiff * 1, priceDecimals);
+                elements.tp3.textContent = formatNumber(currentPrice - priceDiff * 3, priceDecimals);
+                elements.tp5.textContent = formatNumber(currentPrice - priceDiff * 5, priceDecimals);
             }
 
             elements.ratioValue.textContent = formatNumber(ratio) + '%';
@@ -1753,6 +1842,9 @@
                 saveConfigToStorage();
                 calculate();
             });
+
+            // 清空按钮
+            elements.resetBtn.addEventListener('click', resetAllInputs);
 
             // 记录按钮
             elements.recordBtn.addEventListener('click', addHistoryRecord);

@@ -1,5 +1,5 @@
 // Service Worker - 交易仓位计算器 离线缓存
-const CACHE_NAME = 'trade-tool-v7';
+const CACHE_NAME = 'trade-tool-v8';
 const ASSETS = [
     './',
     './index.html',
